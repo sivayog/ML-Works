@@ -1,0 +1,207 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Visualize word2vec embeddings in tensorboard"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import warnings\n",
+    "warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')\n",
+    "\n",
+    "import gensim\n",
+    "import tensorflow as tf\n",
+    "import numpy as np\n",
+    "\n",
+    "from tensorflow.contrib.tensorboard.plugins import projector"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Load the saved word2vec model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "fname = \"w2v_model\"\n",
+    "model = gensim.models.keyedvectors.KeyedVectors.load(fname)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "# project vocab\n",
+    "max = len(model.wv.vocab)-1\n",
+    "w2v = np.zeros((max,model.layer1_size))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "\n",
+    "with open(\"metadata.tsv\", 'w+') as file_metadata:\n",
+    "    for i,word in enumerate(model.wv.index2word[:max]):\n",
+    "        w2v[i] = model.wv[word]\n",
+    "        file_metadata.write(word + '\\n')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "# define the model without training\n",
+    "sess = tf.InteractiveSession()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "with open(\"metadata.tsv\", 'w+') as file_metadata:\n",
+    "    for i,word in enumerate(model.wv.index2word[:max]):\n",
+    "        w2v[i] = model.wv[word]\n",
+    "        file_metadata.write(word + '\\n')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[ 0.38341904,  0.17210738,  0.0855258 , ..., -0.24067372,\n",
+       "         0.08410006,  0.24551795],\n",
+       "       [-0.05418106,  0.28122011,  0.31881899, ..., -0.3409965 ,\n",
+       "         0.00467235,  0.51375943],\n",
+       "       [ 0.74657673,  0.08961128, -0.37936884, ..., -0.07920916,\n",
+       "        -0.4161987 ,  0.34416446],\n",
+       "       ..., \n",
+       "       [-0.43247166,  0.43675452,  0.13454761, ..., -0.9457109 ,\n",
+       "         0.3885459 , -0.18765165],\n",
+       "       [-0.50884265,  0.69198948, -0.79100227, ..., -0.42207813,\n",
+       "        -0.83687699,  0.10216013],\n",
+       "       [-0.01109237,  0.79544038,  0.41477296, ..., -0.32086468,\n",
+       "         0.18253611,  0.37175721]])"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "w2v"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'tensorboard/model.ckpt-28070'"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# define the model without training\n",
+    "sess = tf.InteractiveSession()\n",
+    "\n",
+    "with tf.device(\"/cpu:0\"):\n",
+    "    embedding = tf.Variable(w2v, trainable=False, name='embedding')\n",
+    "\n",
+    "tf.global_variables_initializer().run()\n",
+    "\n",
+    "path = 'tensorboard'\n",
+    "saver = tf.train.Saver()\n",
+    "writer = tf.summary.FileWriter(path, sess.graph)\n",
+    "\n",
+    "\n",
+    "config = projector.ProjectorConfig()\n",
+    "embed= config.embeddings.add()\n",
+    "embed.tensor_name = 'embedding'\n",
+    "embed.metadata_path = 'metadata.tsv'\n",
+    "\n",
+    "\n",
+    "# Specify the width and height of a single thumbnail.\n",
+    "projector.visualize_embeddings(writer, config)\n",
+    "\n",
+    "saver.save(sess, path+'/model.ckpt', global_step=max)\n",
+    "\n",
+    "# open tensorboard with logdir, check localhost:6006 for viewing your embedding.\n",
+    "# tensorboard --logdir=\"tensorboard\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python [conda root]",
+   "language": "python",
+   "name": "conda-root-py"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.11"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
